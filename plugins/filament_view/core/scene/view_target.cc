@@ -588,27 +588,27 @@ void ViewTarget::DrawFrame(const uint32_t time) {
                           std::chrono::steady_clock::now() - cpuUpdateStart
   )
                           .count();
-  // spdlog::debug(
-  //   "[{}] CPU frametime: {:.2f}ms", __FUNCTION__,
-  //   std::chrono::duration<double, std::milli>(cpuUpdateDuration).count()
-  // );
+  spdlog::debug(
+    "[{}] CPU frametime: {:.2f}ms", __FUNCTION__,
+    std::chrono::duration<double, std::milli>(cpuFrametime).count()
+  );
 
   // TODO(kerberjg): send kUpdateFrame event, async with wait
 
   // Render the scene, unless the renderer wants to skip the frame.
   const auto gpuDrawStart = std::chrono::steady_clock::now();
-  // spdlog::debug("=== BEGIN FRAME ===");
+  spdlog::debug("[DrawFrame] begin");
   if (renderer->beginFrame(fswapChain_, time)) {
     // Frame is being rendered
     // TODO(kerberjg): send kPreRenderFrame event, async with wait
-    // spdlog::debug("=== RENDER FRAME ===");
+    spdlog::debug("[DrawFrame] render");
     renderer->render(fview_);
-    // spdlog::debug("=== END FRAME ===");
+    spdlog::debug("[DrawFrame] end");
     renderer->endFrame();
     // TODO(kerberjg): send kPostRenderFrame event, async with wait
   } else {
     // beginFrame failed, the renderer couldn't render this frame
-    // spdlog::error("[{}] BEGINFRAME FAILED!", __FUNCTION__);
+    spdlog::error("[{}] BEGINFRAME FAILED!", __FUNCTION__);
   }
 
   double gpuFrametime = std::chrono::duration<double, std::milli>(
@@ -616,9 +616,9 @@ void ViewTarget::DrawFrame(const uint32_t time) {
   )
                           .count();
 
-  // const auto scriptStart = std::chrono::steady_clock::now();
+  const auto scriptStart = std::chrono::steady_clock::now();
 
-  // spdlog::debug("[{}] Calling Script event: preRenderFrame", __FUNCTION__);
+  spdlog::debug("[{}] Calling Script event: preRenderFrame", __FUNCTION__);
   const auto scriptFuture = FilamentViewPlugin::CallEvent(
     kPreRenderFrame,
     {//
@@ -630,16 +630,16 @@ void ViewTarget::DrawFrame(const uint32_t time) {
   );
 
   scriptFuture.wait();
-  // const auto scriptDuration = std::chrono::steady_clock::now() - scriptStart;
-  // spdlog::debug(
-  //   "[{}] Script frametime: {:.2f}ms", __FUNCTION__,
-  //   std::chrono::duration<double, std::milli>(scriptDuration).count()
-  // );
+  const auto scriptFrametime = std::chrono::steady_clock::now() - scriptStart;
+  spdlog::debug(
+    "[{}] Script frametime: {:.2f}ms", __FUNCTION__,
+    std::chrono::duration<double, std::milli>(scriptFrametime).count()
+  );
 
-  // spdlog::debug(
-  //   "[{}] GPU frametime: {:.2f}ms", __FUNCTION__,
-  //   std::chrono::duration<double, std::milli>(gpuDrawDuration).count()
-  // );
+  spdlog::debug(
+    "[{}] GPU frametime: {:.2f}ms", __FUNCTION__,
+    std::chrono::duration<double, std::milli>(gpuFrametime).count()
+  );
 
   m_LastTime = time;
 }
@@ -654,10 +654,10 @@ void ViewTarget::OnFrame(void* data, wl_callback* callback, const uint32_t time)
   // NOTE: this HAS to be done here, because the CallEvent above needs to complete on this thread
   //       so we need to give the event loop a chance to process it
   if (!!obj->framePromise) {
-    // spdlog::debug("[OnFrame], waiting for previous frame to finish...", __FUNCTION__);
+    spdlog::debug("[OnFrame], waiting for previous frame to finish...", __FUNCTION__);
     obj->framePromise->get_future().wait();
   } else {
-    // spdlog::debug("[OnFrame], first frame!", __FUNCTION__);
+    spdlog::debug("[OnFrame], first frame!", __FUNCTION__);
   }
 
   // Post and await promise
@@ -667,7 +667,7 @@ void ViewTarget::OnFrame(void* data, wl_callback* callback, const uint32_t time)
   // TODO: there's a 0.05ms lag when posting the task - SHOULDN'T HAPPEN!
   // NOTE: let's use separate strands for work and rendering?
   post(*ECSManager::GetInstance()->getStrand(), [data, obj, callback, time, promise] {
-    // spdlog::debug("[OnFrame] === (wl) callback start ===");
+    spdlog::debug("[OnFrame] === (wl) callback start ===");
     obj->callback_ = nullptr;
 
     // std::lock_guard<std::mutex> lock(obj->frameLock_);
@@ -690,7 +690,7 @@ void ViewTarget::OnFrame(void* data, wl_callback* callback, const uint32_t time)
     // spdlog::debug("=== (wl) surface commit ===");
     // NOTE: DO NOT CALL wl_surface_commit, it already happens elsewhere
 
-    // spdlog::debug("[OnFrame] === (wl) callback end ===");
+    spdlog::debug("[OnFrame] === (wl) callback end ===");
     promise->set_value();
   });
 
