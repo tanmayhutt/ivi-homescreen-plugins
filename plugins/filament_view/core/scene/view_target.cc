@@ -689,6 +689,7 @@ void ViewTarget::OnFrame(void* data, wl_callback* callback, const uint32_t time)
 
     // spdlog::debug("=== (wl) surface commit ===");
     // NOTE: DO NOT CALL wl_surface_commit, it already happens elsewhere
+    wl_surface_commit(obj->surface_);
 
     // spdlog::debug("[OnFrame] === (wl) callback end ===");
     promise->set_value();
